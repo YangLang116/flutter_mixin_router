@@ -1,7 +1,6 @@
 library flutter_mixin_router;
 
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+export 'route/base/mixin_router_container.dart';
+export 'route/base/mixin_router_intercept_container.dart';
+export 'route/uri_intercept_container.dart';
+export 'route/base/utils/mixin_router_utils.dart';
