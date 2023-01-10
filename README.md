@@ -2,163 +2,363 @@
 使用Dart mixin机制实现PageRoute模块化
 -->
 
-## 库说明
+## 1、项目背景
 
-`flutter_mixin_router` 库与其说是一个路由框架，还不如称之为一种思想，利于`Dart`的mixin特性，参考`flutter`源码中`WidgetsFlutterBinding`所总结出来的。
-库本身代码核心类仅仅只有两个`MixinRouterContainer`、`MixinRouterInterceptContainer`。前者用于粘合各模块的`PageRoute`列表，后者用于拦截`PageRoute`跳转，
-比如拦截用户未登录情况下打开个人中心页面。
+几乎所有的Flutter应用都是采用路由表的方式对路由进行管理，即在应用初始化时，提前把**路由名称**和对应的页面注册到路由表中，应用内部通过**路由名称**跳转到相应的页面。以如下Demo项目为例：
 
-## 使用说明
+### 1.1、项目目录结构
 
-项目结构如下：
+![image.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/cc95703c255c4560b22549f5a9766754~tplv-k3u1fbpfcp-watermark.image?)
+
+整个项目包含三个页面(大厅页面、设置页面A、设置页面B) 以及 一个入口文件(main.dart)
+
+### 1.2、项目代码说明
+
+A、B 设置页面（屏幕正中间展示当前页面名称）
 
 ```
-
- --- Home                           : 大厅业务模块
- 
-  ---- home_page_1.dart             : 大厅页面1
-  
-  ---- home_page_2.dart             : 大厅页面2
-  
-  ---- home_router_table.dart       : 使用mixin_router创建的文件，用于聚合该模块所有路由，即：大厅子路由表
-  
- --- Mine                           : 个人业务模块     
- 
-  ---- mine_page.dart               : 个人页面1
-  
-  ---- mine_router_table.dart       : 使用mixin_router创建的文件，用于聚合该模块所有路由，即：个人子路由表
- 
- main.dart                          : 启动文件(entry-point)
- 
- app_router_center.dart             : 使用mixin_router创建的文件，用于聚合所有模块(大厅业务模块 和 个人业务模块)，即：路由总表
-```
-
-页面相关的代码这里就不再说明了，重点文件`main.dart`、`app_router_center.dart`、`home_router_table.dart` 和 `mine_router_table.dart`。
-
-main.dart:
-
-```dart
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class APage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Mixin Route Test',
-      //配置初始化路由，建议定义静态字段
-      initialRoute: '/home_page_1',
-      //从路由总表中获取App所有路由
-      routes: AppRouterCenter.share.installRouters(),
+    return Center(
+      child: Text('APage'),
+    );
+  }
+}
+
+
+class BPage extends StatelessWidget {
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('BPage'),
     );
   }
 }
 ```
 
-app_router_center.dart
+大厅页面（屏幕正中间展示页面名称，点击名称跳转到页面A）
 
-```dart
-
-//使用mixin机制，将各路由模块组装
-class AppRouterCenter extends MixinRouterInterceptContainer
-    with HomeRouterTable, MineRouterTable {
-  AppRouterCenter._();
-
-  static final AppRouterCenter _instance = AppRouterCenter._();
-
-  static AppRouterCenter get share => _instance;
-}
 ```
+class HomePage extends StatelessWidget {
 
-home_router_table.dart
-
-```dart
-
-//使用mixin定义大厅路由子表
-mixin HomeRouterTable on MixinRouterContainer {
   @override
-  Map<String, WidgetBuilder> installRouters() {
-    Map<String, WidgetBuilder> superRouteList = super.installRouters();
-    //添加本模块路由
-    Map<String, WidgetBuilder> routeList = {
-      '/home_page_1': (context) => Home1Page(),
-      '/home_page_2': (context) => Home2Page(),
-    };
-    routeList.addAll(superRouteList);
-    return routeList;
+  Widget build(BuildContext context) {
+    return Center(
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, '/setting_a'),  //路由跳转
+        child: Text('HomePage'),
+      ),
+    );
   }
 }
 ```
 
-mine_router_table.dart
+入口文件（注册应用路由表）
 
-```dart
-
-//使用mixin定义个人路由子表，与大厅路由子表定义不同，此处继承MixinRouterInterceptContainer，支持拦截
-//而 MixinRouterInterceptContainer extends MixinRouterContainer
-mixin MineRouterTable on MixinRouterInterceptContainer {
+```
+class MyApp extends StatelessWidget {
 
   @override
-  Map<String, WidgetBuilder> installRouters() {
-    //注册路由拦截，return true 表示消费本次跳转，否则进行路由跳转
-    registerRouteInterceptor('/mine_page', (context, pageName, pushType,
-        {arguments, predicate}) {
-      if (isLogin) {
-        return false;
-      }
-      print('toLogin');
-      return true;
-    });
-    Map<String, WidgetBuilder> superRouteList = super.installRouters();
-    //添加本模块路由
-    Map<String, WidgetBuilder> routeList = {
-      '/mine_page': (context) => MinePage(),
-    };
-    routeList.addAll(superRouteList);
-    return routeList;
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      ...
+      initialRoute: '/home',
+      routes: {
+        '/home': (context) => HomePage(),    //路由注册
+        '/setting_a': (context) => APage(),
+        '/setting_b': (context) => BPage(),
+      },
+    );
   }
 }
 ```
 
-打开指定页面：
+## 2、项目问题
 
-```dart
-//可配置打开router的方式，pushName, pushReplacementNamed...
-//可配置打开router的参数
-AppRouteCenter.share.openPage(context, '/mine_page', ...)
+随着项目的不断开发迭代，会有越来越多的页面被添加到应用中。由于新增加的页面都需要提前注册到路由表中，此时入口文件(main.dart）会变得越来越臃肿：
+
+```
+routes: {
+        '/home': (context) => HomePage(),
+        '/setting_a': (context) => APage(),
+        '/setting_b': (context) => BPage(),
+        ...
+        ...
+},
 ```
 
-页面参数获取
+不容小觑的还有另外一个问题，项目正在变得越来越**扁平化！！！** ，毕竟项目路由并没有分结构进行管理：
 
-```dart
-String? name = getMixinArg(context)?['name'];
-int? age = getMixinArg(context)?['age'];
+![image.png](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/ff7f37326cc44a06aa0ef85cac346a84~tplv-k3u1fbpfcp-watermark.image?)
+
+## 3、解决方案
+
+### 3.1、路由注册方案改造
+
+![image.png](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d2e334ef56d44f72851d0a10889545f1~tplv-k3u1fbpfcp-watermark.image?)
+
+在项目的入口文件中，只需要添加对应的业务模块，而页面的注册过程就交给对应的模块完成，保证项目结构化的同时，也极大避免了入口文件臃肿问题。
+
+### 3.2、模块管理基类创建
+
+```
+class MixinRouterContainer {
+  ///init router
+  Map<String, WidgetBuilder> installRouters() => {};
+
+  ///open page
+  Future<T?>? openPage<T>(BuildContext context, String pageName, ... Map<dynamic, dynamic>? arguments,...}) {
+    Map<String, dynamic> args = {'args': arguments};
+    switch (pushType) {
+      case RoutePushType.pushNamed:
+        return Navigator.pushNamed(context, pageName, arguments: args);
+      ...
+    }
+  }
+}
 ```
 
-## 扩展
+整个基类的核心包括**两个**方法：
+-   **installRouters**:  配置属于该模块的路由表
+-   **openPage**: 打开相应的路由页面
 
-- 内置扩展
+### 3.3、模块页面注册：
 
-    如果`AppRouterCenter` extends `UriRouterInterceptContainer`，则上面打开指定页面的方式，可以支持Uri，
+```
+mixin HomeRouteContainer on MixinRouterContainer {
+  @override
+  Map<String, WidgetBuilder> installRouters() {
+    Map<String, WidgetBuilder> originRoutes = super.installRouters();
+    Map<String, WidgetBuilder> newRoutes = {};
+    newRoutes['/home'] = (context) => HomePage(); //注册大厅页面
+    newRoutes.addAll(originRoutes);
+    return newRoutes;
+  }
+}
 
-    ```dart
-    AppRouteCenter.share.urlToPage(context, 'appscheme://mine_page?name=1&age=2')
+mixin SettingRouteContainer on MixinRouterContainer {
+  @override
+  Map<String, WidgetBuilder> installRouters() {
+    Map<String, WidgetBuilder> originRoutes = super.installRouters();
+    Map<String, WidgetBuilder> newRoutes = {};
+    newRoutes['/setting_a'] = (context) => APage();  //注册A页面  
+    newRoutes['/setting_b'] = (context) => BPage();  //注册B页面
+    newRoutes.addAll(originRoutes);
+    return newRoutes;
+  }
+}
+```
+
+可以看到HomeRouteContainer 把 HomePage添加到自己的路由表中，同样SettingRouteContainer管理了SettingA、SettingB两个页面。
+
+### 3.4、App模块注册：
+
+```
+class AppRouteContainer extends MixinRouterContainer
+    with HomeRouteContainer, SettingRouteContainer {  //通过mixin机制粘合项目各个路由模块
+  AppRouteContainer._();
+
+  static AppRouteContainer _instance = AppRouteContainer._();
+
+  static AppRouteContainer get share => _instance;
+}
+
+
+class MyApp extends StatelessWidget {
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      ...
+      initialRoute: '/home',
+      routes: AppRouteContainer.share.installRouters(),  //注册总路由表
+    );
+  }
+}
+```
+
+要注意的是，需要创建一个新的类，来粘合项目所有的路由模块，如上面的AppRouteContainer所示，声明成一个单例，方便在项目中使用：
+
+-   注册项目路由表：AppRouteContainer.share.installRouters()
+-   页面跳转：AppRouteContainer.share.openPage(context, '/setting_a')
+
+
+## 4、方案延伸
+
+### 情况一：
+
+说明： 在项目开发过程中，除了简单的页面跳转外，还存在路由拦截。比如：用户在没登录的情况下，想打开个人主页，那么就需要拦截这一过程，并跳转到登录页面。
+
+解决方案：只需在原有的路由管理模块的基类( MixinRouterContainer )上，做进一步的封装。通过添加拦截路由表，并重写路由跳转过程：
+
+```
+typedef MixinRouteInterceptor = bool Function(BuildContext context, String pageName, ...);
+
+class MixinRouterInterceptContainer extends MixinRouterContainer {
+  
+  final Map<String, MixinRouteInterceptor> _routeInterceptorTable = {};
+
+  void registerRouteInterceptor(String pageName, MixinRouteInterceptor interceptor) {
+    _routeInterceptorTable[pageName] = interceptor;
+  }
+
+  void unRegisterRouteInterceptor(String pageName) {
+    _routeInterceptorTable.remove(pageName);
+  }
+
+  @override
+  Future<T?>? openPage<T>(BuildContext context, String pageName,...) {
+    if (!_routeInterceptorTable.containsKey(pageName)) {
+      return super.openPage(context,pageName,...);
+    }
+    MixinRouteInterceptor interceptor = _routeInterceptorTable[pageName]!;
+    bool needIntercept = interceptor.call(context,pageName,...);
+    if (needIntercept) {
+      return Future.value(null);
+    } else {
+      return super.openPage(context,pageName,...);
+    }
+  }
+}
+```
+
+例如：在打开大厅页面之前，判断用户是否登录，如未登录则跳转到登录页面。
+
+```
+mixin HomeRouteContainer on MixinRouterInterceptContainer {
+  @override
+  Map<String, WidgetBuilder> installRouters() {
+    registerRouteInterceptor('/home', (...) => if(!isLogin) openLoginPage());  //注册拦截路由表
+    Map<String, WidgetBuilder> originRoutes = super.installRouters();
+    Map<String, WidgetBuilder> newRoutes = {};
+    newRoutes['/home'] = (context) => HomePage();
+    newRoutes.addAll(originRoutes);
+    return newRoutes;
+  }
+}
+```
+
+### 情况二：
+
+说明：为了通过外链能打开对应的页面，很多项目都是Url统跳。
+
+解决方案：只需要对原有的 AppRouteContainer 进行扩展，代理默认的页面打开方法，实现url解析：
+
+```
+class AppRouteContainer extends MixinRouterContainer
+    with HomeRouteContainer, SettingRouteContainer {  //通过mixin机制粘合项目各个路由模块
     
-    String? name = getMixinArg(context)?['name'];
-    
-    //通过uri的方式打开页面，参数都是string类型
-    String? age = getMixinArg(context)?['age'];
-    ```
-- 自定义扩展
+   Future<T?>? urlToPage<T>(BuildContext context, String urlStr, ...) {
+  	Uri? url = Uri.tryParse(urlStr);
+  	if (url == null) return Future.error('parse url fail');
+  	Map<String, String> args = {};
+    args.addAll(url.queryParameters);
+    args['_url'] = urlStr;
+    String pageName = url.host;
+    super.openPage(context,'/' + pageName ...);
+  }
+}
+```
 
-    开发者可参考`UriRouterInterceptContainer`自定Container，并使得 `AppRouterCenter` extends `自定义Container`
+在进行url统跳时，调用urlToPage即可打开相应的flutter页面。
+
+## 5、深入探索
+
+对项目的路由改造到此就结束了么？回过头来再想想，发现还是存在一些问题：
+
+-   需要手动创建并维护不同的路由管理模块(HomeRouteContainer、SettingRouteContainer）
+-   新的页面都需要在对应的模块类中进行手动注册
+
+客户端原生项目对于这类问题，可以通过注解的方式解决，类似阿里的ARouter，那么Flutter也可以借鉴此方式完成进一步的优化，利用注解去生成对应的路由模块管理文件，避免手动维护，具体如下：
+
+### 5.1、注解子路由表
+
+```
+const String HOME_ROUTE_TABLE = 'HomeRouteTable';
+const String SETTING_ROUTE_TABLE = 'SettingsRouteTable';
+
+//tDescription: 仅仅作为生成类的注释
+@RouterTableList(
+  tableList: [
+    RouterTable(tName: HOME_ROUTE_TABLE, tDescription: '大厅路由模块'),
+    RouterTable(tName: SETTING_ROUTE_TABLE, tDescription: '设置路由模块'),
+  ],
+)
 
 
-## 注解处理器支持
+//with HomeRouterTable, MineRouterTable，即上面声明的两个路由表的名字
+class AppRouteContainer extends MixinRouterInterceptContainer
+    with HomeRouteTable, SettingsRouteTable {
+  AppRouteContainer._();
 
-[flutter_mixin_router_ann](https://pub.dev/packages/flutter_mixin_router_ann)
+  static AppRouteContainer _instance = AppRouteContainer._();
 
+  static AppRouteContainer get share => _instance;
+}
+```
 
+### 5.2、注解普通路由
+
+```
+@MixinRoute(tName: SETTING_ROUTE_TABLE, path: '/setting_a')
+class APage extends StatelessWidget {
+  const APage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('APage'),
+    );
+  }
+}
+```
+
+### 5.3、注解拦截路由
+
+```
+@MixinRoute(tName: SETTING_ROUTE_TABLE, path: '/setting_b')
+class BPage extends StatelessWidget {
+  const BPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('BPage'),
+    );
+  }
+}
+
+@MixinInterceptRoute(tName: SETTING_ROUTE_TABLE, path: '/setting_b')
+bool interceptorMinePage(context, pageName, pushType, {arguments, predicate}) { //函数签名固定写法
+  print('toLogin');
+  return true;
+}
+```
+
+## 6、集成使用
+
+在项目的pubspec.yaml中添加依赖，即可开启注解路由之旅
+
+```
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_mixin_router: ^1.0.0      # 添加路由模块管理基类
+  flutter_mixin_router_ann: 1.0.0   # 添加注解类
+
+dev_dependencies:
+  build_runner: 2.1.8               # 添加依赖
+  flutter_mixin_router_gen: 1.0.1   # 添加代码生成工具库
+```
+
+在项目页面上添加对应的注解后，执行以下命令生成对应的路由代码
+```
+# 清除增量编译缓存
+flutter packages pub run build_runner clean
+
+# 重新生成代码
+flutter packages pub run build_runner build --delete-conflicting-outputs
+```
