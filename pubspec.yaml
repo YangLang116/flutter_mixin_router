@@ -1,6 +1,6 @@
 name: flutter_mixin_router
 description: 使用Dart mixin机制实现PageRoute模块化
-version: 1.0.1
+version: 1.0.2
 homepage: https://github.com/YangLang116/flutter_mixin_router
 
 environment:

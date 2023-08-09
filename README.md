@@ -303,9 +303,23 @@ class AppRouteContainer extends MixinRouterInterceptContainer
 ### 5.2、注解普通路由
 
 ```
+//方式一：不使用路由参数
 @MixinRoute(tName: SETTING_ROUTE_TABLE, path: '/setting_a')
 class APage extends StatelessWidget {
   const APage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text('APage'),
+    );
+  }
+}
+
+//方式二：使用路由参数
+@MixinRoute(tName: SETTING_ROUTE_TABLE, path: '/setting_a', arg=true)
+class APage extends StatelessWidget {
+  const APage(dynamic args, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
